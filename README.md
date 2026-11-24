@@ -6,7 +6,7 @@ A free, single-page maths practice game for children in **Year 3 (ages 7–8)** 
 
 Open the live page in any modern browser:
 
-`https://YOUR-USERNAME.github.io/REPOSITORY-NAME/`
+`https://mostafaikandil.github.io/maths-adventure/`
 
 On a phone or tablet you can add it to your Home screen (Chrome: ⋮ menu → *Add to Home screen*; Safari: Share → *Add to Home Screen*) so it opens like an app.
 
