@@ -48,6 +48,24 @@ input{font:inherit;font-size:24px;padding:12px;border-radius:14px;border:3px sol
 .wr{text-align:left;font-size:15px;padding:6px 0;border-bottom:1px solid var(--key)}
 .wr em{opacity:.65;font-style:normal;font-size:13px}
 .foot{margin-top:auto;padding-top:10px}
+.badge{position:relative;width:130px;height:130px;border-radius:50%;margin:8px auto;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.3),inset 0 0 0 6px rgba(255,255,255,.35);animation:bpop .8s cubic-bezier(.2,1.6,.4,1) both}
+.badge.t1{background:radial-gradient(circle at 30% 25%,#f0b27a,#a85c1e)}
+.badge.t2{background:radial-gradient(circle at 30% 25%,#f4f6f7,#8e9aa5)}
+.badge.t3{background:radial-gradient(circle at 30% 25%,#fff3a8,#e6a800);box-shadow:0 6px 18px rgba(0,0,0,.3),inset 0 0 0 6px rgba(255,255,255,.4),0 0 34px #ffd23f}
+.badge.t0{background:#999;opacity:.35;animation:none}
+.badge .bs{font-size:54px;line-height:1;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.35)}
+.badge .bt{font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4);font-size:18px}
+.badge.sm{width:74px;height:74px;margin:4px}.badge.sm .bs{font-size:30px}.badge.sm .bt{font-size:12px}
+.shine{position:absolute;top:-20%;left:-60%;width:40%;height:140%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);transform:skewX(-20deg);animation:sweep 2.2s ease-in-out .5s infinite}
+@keyframes sweep{0%{left:-60%}60%,100%{left:130%}}
+@keyframes bpop{from{transform:scale(0) rotate(-200deg)}to{transform:scale(1) rotate(0)}}
+.bn{font-weight:700;font-size:20px;margin-bottom:4px}
+.trow{display:flex;justify-content:center;gap:6px;margin-bottom:10px}.trow>div{text-align:center}
+.pop{animation:popa .45s}@keyframes popa{40%{transform:scale(1.12)}}
+.shake{animation:shk .4s}@keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.conf{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden;z-index:50}
+.conf i{position:absolute;top:-20px;width:10px;height:16px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 </style>
 </head>
 <body>
@@ -60,8 +78,29 @@ var LDESC={A:["2-digit, no carrying","2-digit with carrying","3-digit numbers","
 LDESC.C=["Easy mix","Carry and borrow","3-digit mix","Hardest mix"];
 var S=load(),mod="A",lvl=0,qs=[],qi=0,score=0,entry="",locked=false,wrongNow=[],resetArm=false;
 var app=document.getElementById("app");
-function blank(){return {name:"",prog:{A:1,B:1,C:1},best:{},plays:[],wrong:[]};}
-function load(){try{var d=JSON.parse(localStorage.getItem(KEY));if(d&&d.prog)return d;}catch(e){}return blank();}
+var AC=null,streak=0,MED=["","🥉","🥈","🥇"],TN=["","Bronze","Silver","Gold"];
+function ctx(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();}catch(e){}return AC;}
+function tone(f,t,d,type,v){var c=ctx();if(!c||S.mute)return;var o=c.createOscillator(),g=c.createGain(),st=c.currentTime+t;o.type=type||"sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,st);g.gain.exponentialRampToValueAtTime(v||.18,st+.02);g.gain.exponentialRampToValueAtTime(.0001,st+d);o.connect(g);g.connect(c.destination);o.start(st);o.stop(st+d+.05);}
+function sfx(k){
+ if(k==="ok"){tone(784,0,.18,"sine");tone(1175,.09,.28,"sine");}
+ else if(k==="no"){tone(260,0,.25,"triangle",.14);tone(220,.18,.3,"triangle",.12);}
+ else if(k==="win"){[523,659,784,1047,1319].forEach(function(f,i){tone(f,i*.12,.5,"sine",.16);tone(f*2,i*.12+.02,.35,"sine",.05);});tone(1568,.7,.9,"sine",.1);}
+ else if(k==="lose"){[392,349,330].forEach(function(f,i){tone(f,i*.18,.35,"triangle",.12);});}
+ else if(k==="key"){tone(600,0,.05,"sine",.05);}
+}
+document.addEventListener("pointerdown",function(){ctx();});
+function confetti(){var w=document.createElement("div");w.className="conf";var cs=["#ff7a59","#ffd23f","#2eb67d","#4f7cff","#9b5de5","#ff5fa2"];
+ for(var i=0;i<70;i++){var p=document.createElement("i");p.style.left=r(0,100)+"%";p.style.background=cs[r(0,5)];p.style.animationDuration=(2+Math.random()*2)+"s";p.style.animationDelay=(Math.random()*.6)+"s";p.style.transform="rotate("+r(0,360)+"deg)";w.appendChild(p);}
+ document.body.appendChild(w);setTimeout(function(){w.remove();},4800);}
+function badgeHTML(t,m,l,sm){return '<div class="badge t'+t+(sm?' sm':'')+'"><div class="shine"></div><span class="bs">'+(t?'★':'?')+'</span><span class="bt">'+m+(l+1)+'</span></div>';}
+function trophies(){
+ var h='<h1>My trophies 🏆</h1><div class="card">';
+ for(var k in MODS){h+='<h2>Module '+k+' · '+MODS[k].n+'</h2><div class="trow">';for(var i=0;i<NL;i++){var t=S.badges[k+i]||0;h+='<div>'+badgeHTML(t,k,i,true)+'<small>'+(t?TN[t]:'Level '+(i+1))+'</small></div>';}h+='</div>';}
+ app.innerHTML=h+'<p style="opacity:.75">Bronze: 20–22 correct · Silver: 23–24 · Gold: all 25</p></div><button class="btn alt" id="bk">◀ Back</button>';
+ document.getElementById("bk").onclick=home;
+}
+function blank(){return {name:"",prog:{A:1,B:1,C:1},best:{},plays:[],wrong:[],badges:{},mute:false};}
+function load(){try{var d=JSON.parse(localStorage.getItem(KEY));if(d&&d.prog){d.badges=d.badges||{};return d;}}catch(e){}return blank();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function r(a,b){return a+Math.floor(Math.random()*(b-a+1));}
@@ -97,41 +136,41 @@ function home(){
  if(!S.name)return welcome();
  var h='<h1>Hello, '+esc(S.name)+'! 👋</h1><p class="sub">Pick a module to practise.</p><div style="width:100%">';
  for(var k in MODS){h+='<button class="mod" data-m="'+k+'"><span class="l">'+MODS[k].s+'</span><span><b>Module '+k+' · '+MODS[k].n+'</b>Level '+Math.min(S.prog[k],NL)+' of '+NL+' unlocked</span></button>';}
- h+='</div><div class="foot"><button class="btn alt sm" id="par">👨‍👩‍👧 Parent area</button></div>';
+ h+='</div><div class="foot"><button class="btn alt sm" id="tr">🏆 Trophies</button> <button class="btn alt sm" id="mu">'+(S.mute?'🔇':'🔊')+'</button> <button class="btn alt sm" id="par">👨‍👩‍👧 Parent area</button></div>';
  app.innerHTML=h;
  app.querySelectorAll(".mod").forEach(function(b){b.onclick=function(){levels(b.dataset.m);};});
- document.getElementById("par").onclick=gate;
+ document.getElementById("par").onclick=gate;document.getElementById("tr").onclick=trophies;document.getElementById("mu").onclick=function(){S.mute=!S.mute;save();home();if(!S.mute)sfx("ok");};
 }
 function levels(m){
  mod=m;var h='<h1>Module '+m+' · '+MODS[m].n+'</h1><p class="sub">Score '+PASS+' or more out of '+TOTAL+' to unlock the next level.</p><div class="card" style="padding:10px 16px">';
  for(var i=0;i<NL;i++){var ok=i<S.prog[m],bs=S.best[m+i];
-  h+='<button class="lvl" '+(ok?'':'disabled')+' data-l="'+i+'"><b>'+(ok?'':'🔒 ')+'Level '+(i+1)+(bs!=null?'<small>Best '+bs+'/'+TOTAL+'</small>':'')+'</b>'+LDESC[m][i]+'</button>';}
+  h+='<button class="lvl" '+(ok?'':'disabled')+' data-l="'+i+'"><b>'+(ok?'':'🔒 ')+'Level '+(i+1)+(bs!=null?'<small>'+MED[S.badges[m+i]||0]+' Best '+bs+'/'+TOTAL+'</small>':'')+'</b>'+LDESC[m][i]+'</button>';}
  app.innerHTML=h+'</div><button class="btn alt" id="bk">◀ Back</button>';
  app.querySelectorAll(".lvl").forEach(function(b){b.onclick=function(){start(m,+b.dataset.l);};});
  document.getElementById("bk").onclick=home;
 }
-function start(m,L){mod=m;lvl=L;qs=[];wrongNow=[];var seen={};while(qs.length<TOTAL){var q=make(m,L),k=q.a+q.op+q.b;if(!seen[k]){seen[k]=1;qs.push(q);}}qi=0;score=0;draw();}
+function start(m,L){streak=0;mod=m;lvl=L;qs=[];wrongNow=[];var seen={};while(qs.length<TOTAL){var q=make(m,L),k=q.a+q.op+q.b;if(!seen[k]){seen[k]=1;qs.push(q);}}qi=0;score=0;draw();}
 function draw(){
  var q=qs[qi];entry="";locked=false;
- app.innerHTML='<div class="top"><span>Module '+mod+' · Level '+(lvl+1)+'</span><span>⭐ '+score+'</span></div><div class="bar"><i style="width:'+(qi/TOTAL*100)+'%"></i></div>'+
+ app.innerHTML='<div class="top"><span>Module '+mod+' · Level '+(lvl+1)+'</span><span>⭐ '+score+' <button class="btn alt sm" id="mt" style="padding:2px 8px">'+(S.mute?'🔇':'🔊')+'</button></span></div><div class="bar"><i style="width:'+(qi/TOTAL*100)+'%"></i></div>'+
  '<div class="card"><div>Question '+(qi+1)+' of '+TOTAL+'</div><div class="sum"><div class="row"><span class="op"></span><span class="num">'+q.a+'</span></div>'+
  '<div class="row"><span class="op">'+(q.op==="+"?"+":"−")+'</span><span class="num">'+q.b+'</span></div><div class="rule"></div><div id="ans"><span class="hint">tap here</span></div></div><div id="msg"></div></div>'+
  '<div id="pad">'+[1,2,3,4,5,6,7,8,9].map(function(n){return '<button data-k="'+n+'">'+n+'</button>';}).join("")+'<button class="back" data-k="b">⌫</button><button data-k="0">0</button><button class="enter" data-k="e">Enter</button></div>';
  document.getElementById("ans").onclick=function(){if(!locked){document.getElementById("pad").classList.add("show");this.classList.add("active");show();}};
- document.querySelectorAll("#pad button").forEach(function(b){b.onclick=function(){key(b.dataset.k);};});
+ document.getElementById("mt").onclick=function(){S.mute=!S.mute;save();this.textContent=S.mute?"🔇":"🔊";};document.querySelectorAll("#pad button").forEach(function(b){b.onclick=function(){key(b.dataset.k);};});
 }
 function show(){var a=document.getElementById("ans");a.innerHTML=entry?entry:'<span class="hint">type your answer</span>';}
 function key(k){
  if(locked)return;
  if(k==="b")entry=entry.slice(0,-1);
  else if(k==="e"){if(entry!=="")check();return;}
- else if(entry.length<4)entry+=k;
+ else if(entry.length<4){entry+=k;sfx("key");}
  show();
 }
 function check(){
  locked=true;var q=qs[qi],a=document.getElementById("ans"),m=document.getElementById("msg"),ok=(+entry===q.ans);
- if(ok){score++;a.classList.add("good");m.style.color="var(--good)";m.textContent=pick(["Brilliant","Well done","Great job","Spot on","Super"])+(S.name?", "+S.name:"")+"!";}
- else{a.classList.add("bad");m.style.color="var(--bad)";m.textContent="Not quite. The answer is "+q.ans;
+ if(ok){score++;streak++;sfx("ok");a.classList.add("good","pop");m.style.color="var(--good)";m.textContent=pick(["Brilliant","Well done","Great job","Spot on","Super"])+(S.name?", "+S.name:"")+"!"+(streak>=3?" 🔥 "+streak+" in a row!":"");}
+ else{streak=0;sfx("no");a.classList.add("bad","shake");m.style.color="var(--bad)";m.textContent="Not quite. The answer is "+q.ans;
   wrongNow.push({m:mod,l:lvl+1,q:q.a+" "+(q.op==="+"?"+":"−")+" "+q.b,c:q.ans,u:+entry,t:Date.now()});}
  document.getElementById("pad").classList.remove("show");
  setTimeout(function(){qi++;qi<TOTAL?draw():finish();},ok?900:2300);
@@ -139,17 +178,19 @@ function check(){
 function finish(){
  var pass=score>=PASS,last=lvl===NL-1,h='<div class="card" style="margin-top:26px">';
  var stars=score>=TOTAL?"⭐⭐⭐":score>=PASS?"⭐⭐":score>=15?"⭐":"";
+ var tier=pass?(score>=TOTAL?3:score>=23?2:1):0,old=S.badges[mod+lvl]||0;if(tier>old)S.badges[mod+lvl]=tier;
  if(pass&&!last&&S.prog[mod]<lvl+2)S.prog[mod]=lvl+2;
  if(S.best[mod+lvl]==null||score>S.best[mod+lvl])S.best[mod+lvl]=score;
  S.plays.push({m:mod,l:lvl+1,s:score,t:Date.now()});if(S.plays.length>100)S.plays=S.plays.slice(-100);
  S.wrong=S.wrong.concat(wrongNow).slice(-80);save();
- h+='<div class="big">'+(pass?'🎉':'💪')+'</div><div class="stars">'+stars+'</div><h1>'+score+' out of '+TOTAL+'</h1>';
+ h+=(pass?badgeHTML(tier,mod,lvl)+'<div class="bn">'+TN[tier]+' badge'+(tier>old?' · NEW!':'')+'</div>':'<div class="big">💪</div>')+'<div class="stars">'+stars+'</div><h1>'+score+' out of '+TOTAL+'</h1>';
  if(pass&&last)h+='<p>Well done'+nm()+'! You have finished every level of Module '+mod+'!</p>';
  else if(pass)h+='<p>Amazing'+nm()+'! Level '+(lvl+2)+' is now open.</p>';
  else h+='<p>Nearly there'+nm()+'. You need '+PASS+' to move on. Have another go!</p>';
  if(pass&&!last)h+='<button class="btn" id="nx">Next level ▶</button><br>';
  h+='<button class="btn alt" id="rt">Play again</button><br><button class="btn alt" id="mn">Menu</button></div>';
  app.innerHTML=h;
+ if(pass){setTimeout(function(){sfx("win");confetti();},200);}else sfx("lose");
  var nx=document.getElementById("nx");if(nx)nx.onclick=function(){start(mod,lvl+1);};
  document.getElementById("rt").onclick=function(){start(mod,lvl);};
  document.getElementById("mn").onclick=home;
