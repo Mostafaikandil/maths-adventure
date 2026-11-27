@@ -106,8 +106,8 @@ function trophies(){
  app.innerHTML=h+'<p style="opacity:.75">Bronze: 20–22 correct · Silver: 23–24 · Gold: all 25</p></div><button class="btn alt" id="bk">◀ Back</button>';
  document.getElementById("bk").onclick=home;
 }
-function blank(){return {name:"",prog:{A:1,B:1,C:1},best:{},plays:[],wrong:[],badges:{},mute:false};}
-function load(){try{var d=JSON.parse(localStorage.getItem(KEY));if(d&&d.prog){d.badges=d.badges||{};return d;}}catch(e){}return blank();}
+function blank(){return {name:"",prog:{A:1,B:1,C:1},best:{},plays:[],wrong:[],badges:{},sess:{},mute:false};}
+function load(){try{var d=JSON.parse(localStorage.getItem(KEY));if(d&&d.prog){d.badges=d.badges||{};d.sess=d.sess||{};return d;}}catch(e){}return blank();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function r(a,b){return a+Math.floor(Math.random()*(b-a+1));}
@@ -142,7 +142,7 @@ function welcome(){
 function home(){
  if(!S.name)return welcome();
  var h='<h1>Hello, '+esc(S.name)+'! 👋</h1><p class="sub">Pick a module to practise.</p><div style="width:100%">';
- for(var k in MODS){h+='<button class="mod" data-m="'+k+'"><span class="l">'+MODS[k].s+'</span><span><b>Module '+k+' · '+MODS[k].n+'</b>Level '+Math.min(S.prog[k],NL)+' of '+NL+' unlocked</span></button>';}
+ for(var k in MODS){h+='<button class="mod" data-m="'+k+'"><span class="l">'+MODS[k].s+'</span><span><b>Module '+k+' · '+MODS[k].n+'</b>Level '+Math.min(S.prog[k],NL)+' of '+NL+' unlocked'+(hasSess(k)?' · ▶ round in progress':'')+'</span></button>';}
  h+='</div><div class="foot"><button class="btn alt sm" id="tr">🏆 Trophies</button> <button class="btn alt sm" id="mu">'+(S.mute?'🔇':'🔊')+'</button> <button class="btn alt sm" id="mm">'+(S.nomusic?'🔕':'🎵')+'</button> <button class="btn alt sm" id="par">👨‍👩‍👧 Parent area</button></div>';
  app.innerHTML=h;
  app.querySelectorAll(".mod").forEach(function(b){b.onclick=function(){levels(b.dataset.m);};});
@@ -151,20 +151,26 @@ function home(){
 function levels(m){
  mod=m;var h='<h1>Module '+m+' · '+MODS[m].n+'</h1><p class="sub">Score '+PASS+' or more out of '+TOTAL+' to unlock the next level.</p><div class="card" style="padding:10px 16px">';
  for(var i=0;i<NL;i++){var ok=i<S.prog[m],bs=S.best[m+i];
-  h+='<button class="lvl" '+(ok?'':'disabled')+' data-l="'+i+'"><b>'+(ok?'':'🔒 ')+'Level '+(i+1)+(bs!=null?'<small>'+MED[S.badges[m+i]||0]+' Best '+bs+'/'+TOTAL+'</small>':'')+'</b>'+LDESC[m][i]+'</button>';}
- app.innerHTML=h+'</div><button class="btn alt" id="bk">◀ Back</button>';
+  var ip=S.sess[m+i]&&S.sess[m+i].qi<TOTAL;
+  h+='<button class="lvl" '+(ok?'':'disabled')+' data-l="'+i+'"><b>'+(ok?'':'🔒 ')+'Level '+(i+1)+(ip?'<small>▶ Continue ('+S.sess[m+i].qi+'/'+TOTAL+')</small>':bs!=null?'<small>'+MED[S.badges[m+i]||0]+' Best '+bs+'/'+TOTAL+'</small>':'')+'</b>'+LDESC[m][i]+'</button>'+(ip?'<button class="btn alt sm rs" data-l="'+i+'" style="margin:0 0 8px">↺ Start this level again</button>':'');}
+ app.innerHTML=h+'</div><button class="btn alt" id="bk">🏠 Home</button>';
  app.querySelectorAll(".lvl").forEach(function(b){b.onclick=function(){start(m,+b.dataset.l);};});
+ app.querySelectorAll(".rs").forEach(function(b){b.onclick=function(){fresh(m,+b.dataset.l);};});
  document.getElementById("bk").onclick=home;
 }
-function start(m,L){streak=0;mod=m;lvl=L;qs=[];wrongNow=[];var seen={};while(qs.length<TOTAL){var q=make(m,L),k=q.a+q.op+q.b;if(!seen[k]){seen[k]=1;qs.push(q);}}qi=0;score=0;draw();}
+var tmr=null;
+function hasSess(k){for(var i=0;i<NL;i++)if(S.sess[k+i]&&S.sess[k+i].qi<TOTAL)return true;return false;}
+function start(m,L){var x=S.sess[m+L];if(x&&x.qs&&x.qs.length){streak=0;mod=m;lvl=L;qs=x.qs;qi=x.qi;score=x.score;wrongNow=x.wrongNow||[];if(qi>=TOTAL){finish();return;}draw();return;}fresh(m,L);}
+function fresh(m,L){streak=0;mod=m;lvl=L;qs=[];wrongNow=[];var seen={};while(qs.length<TOTAL){var q=make(m,L),k=q.a+q.op+q.b;if(!seen[k]){seen[k]=1;qs.push(q);}}qi=0;score=0;draw();}
 function draw(){
  var q=qs[qi];entry="";locked=false;
- app.innerHTML='<div class="top"><span>Module '+mod+' · Level '+(lvl+1)+'</span><span>⭐ '+score+' <button class="btn alt sm" id="mt" style="padding:2px 8px">'+(S.mute?'🔇':'🔊')+'</button> <button class="btn alt sm" id="mm2" style="padding:2px 8px">'+(S.nomusic?'🔕':'🎵')+'</button></span></div><div class="bar"><i style="width:'+(qi/TOTAL*100)+'%"></i></div>'+
- '<div class="card"><div>Question '+(qi+1)+' of '+TOTAL+'</div><div class="sum"><div class="row"><span class="op"></span><span class="num">'+q.a+'</span></div>'+
+ app.innerHTML='<div class="top"><button class="btn alt sm" id="hm">🏠 Home</button><span>⭐ '+score+' <button class="btn alt sm" id="mt" style="padding:2px 8px">'+(S.mute?'🔇':'🔊')+'</button> <button class="btn alt sm" id="mm2" style="padding:2px 8px">'+(S.nomusic?'🔕':'🎵')+'</button></span></div><div class="bar"><i style="width:'+(qi/TOTAL*100)+'%"></i></div>'+
+ '<div class="card"><div>Module '+mod+' · Level '+(lvl+1)+' · Question '+(qi+1)+' of '+TOTAL+'</div><div class="sum"><div class="row"><span class="op"></span><span class="num">'+q.a+'</span></div>'+
  '<div class="row"><span class="op">'+(q.op==="+"?"+":"−")+'</span><span class="num">'+q.b+'</span></div><div class="rule"></div><div id="ans"><span class="hint">tap here</span></div></div><div id="msg"></div><div class="tip">Type the ones first, then the tens, then the hundreds</div></div>'+
  '<div id="pad">'+[1,2,3,4,5,6,7,8,9].map(function(n){return '<button data-k="'+n+'">'+n+'</button>';}).join("")+'<button class="back" data-k="b">⌫</button><button data-k="0">0</button><button class="enter" data-k="e">Enter</button></div>';
  document.getElementById("ans").onclick=function(){if(!locked){document.getElementById("pad").classList.add("show");this.classList.add("active");show();}};
- document.getElementById("mm2").onclick=function(){S.nomusic=!S.nomusic;save();this.textContent=S.nomusic?"🔕":"🎵";musicSync();};document.getElementById("mt").onclick=function(){S.mute=!S.mute;save();this.textContent=S.mute?"🔇":"🔊";};document.querySelectorAll("#pad button").forEach(function(b){b.onclick=function(){key(b.dataset.k);};});
+ document.getElementById("hm").onclick=function(){clearTimeout(tmr);home();};document.getElementById("mm2").onclick=function(){S.nomusic=!S.nomusic;save();this.textContent=S.nomusic?"🔕":"🎵";musicSync();};document.getElementById("mt").onclick=function(){S.mute=!S.mute;save();this.textContent=S.mute?"🔇":"🔊";};document.querySelectorAll("#pad button").forEach(function(b){b.onclick=function(){key(b.dataset.k);};});
+ S.sess[mod+lvl]={qs:qs,qi:qi,score:score,wrongNow:wrongNow};save();
 }
 function val(){return entry.split("").reverse().join("");}
 function show(){var a=document.getElementById("ans");a.innerHTML=entry?val():'<span class="hint">ones first!</span>';}
@@ -181,10 +187,11 @@ function check(){
  else{streak=0;sfx("no");a.classList.add("bad","shake");m.style.color="var(--bad)";m.textContent="Not quite. The answer is "+q.ans;
   wrongNow.push({m:mod,l:lvl+1,q:q.a+" "+(q.op==="+"?"+":"−")+" "+q.b,c:q.ans,u:+val(),t:Date.now()});}
  document.getElementById("pad").classList.remove("show");
- setTimeout(function(){qi++;qi<TOTAL?draw():finish();},ok?900:2300);
+ S.sess[mod+lvl]={qs:qs,qi:qi+1,score:score,wrongNow:wrongNow};save();
+ tmr=setTimeout(function(){qi++;qi<TOTAL?draw():finish();},ok?900:2300);
 }
 function finish(){
- var pass=score>=PASS,last=lvl===NL-1,h='<div class="card" style="margin-top:26px">';
+ delete S.sess[mod+lvl];var pass=score>=PASS,last=lvl===NL-1,h='<div class="card" style="margin-top:26px">';
  var stars=score>=TOTAL?"⭐⭐⭐":score>=PASS?"⭐⭐":score>=15?"⭐":"";
  var tier=pass?(score>=TOTAL?3:score>=23?2:1):0,old=S.badges[mod+lvl]||0;if(tier>old)S.badges[mod+lvl]=tier;
  if(pass&&!last&&S.prog[mod]<lvl+2)S.prog[mod]=lvl+2;
